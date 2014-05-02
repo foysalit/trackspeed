@@ -17,9 +17,9 @@ var address = System.args[1],
 
 var Logger = {
     colorify: function (message, color) {
-        if(System.os && System.os.name != 'linux')
+        if(System.os && System.os.name == 'windows')
             return message;
-        
+
         return message[color];
     },
     warn: function (message) {
