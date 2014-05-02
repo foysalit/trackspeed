@@ -15,6 +15,27 @@ var address = System.args[1],
     url = "http://testdummy.info/files.txt",
     visitedPages = {};
 
+var Logger = {
+    colorify: function (message, color) {
+        if(System.os && System.os.name != 'linux')
+            return message;
+        
+        return message[color];
+    },
+    warn: function (message) {
+        console.log(this.colorify(message, 'yellow'));
+    },
+    info: function (message) {
+        console.log(this.colorify(message, 'cyan'));
+    },
+    error: function (message) {
+        console.log(this.colorify(message, 'red'));
+    },
+    ok: function (message) {
+        console.log(this.colorify(message, 'green'));
+    }
+};
+
 //load the urls that we're going to measure the loadtime of
 var loadPages = function (url, cb) {
     var visited = 0;
@@ -25,8 +46,7 @@ var loadPages = function (url, cb) {
         started : new Date()
     };
 
-    var startingMsg = 'Collecting data from url - '+ url;
-    console.log(startingMsg.yellow);
+    Logger.warn('Collecting data from url - '+ url);
 
     var visitUrl = function (callback) {
         visitedPages[url].visits[visited] = {
@@ -34,26 +54,25 @@ var loadPages = function (url, cb) {
             resources : 0
         };
 
-        var page = Page.create(),
-            startingMsg = 'visit - '+ (visited + 1) + ' to url: '+ url;
+        var page = Page.create();
 
         page.onError = function () {};
         page.onResourceReceived = function () {
             ++visitedPages[url].visits[visited].resources;
         };
 
-        //console.log(startingMsg.yellow);
+        //Logger.warn('visit - '+ (visited + 1) + ' to url: '+ url);
 
         page.open(url, function (status) {
             if(status !== 'success'){
                 visitedPages[url].error = true; 
-                console.log('stopping further attempt cause the url isn\'t accesible'.red);
+                Logger.error('stopping further attempt cause the url isn\'t accesible');
                 visited = 5;
                 callback();
                 return;
             }
-            var closingMsg = 'closing page for visit: '+ (visited + 1);
-            //console.log(closingMsg.yellow);
+
+            //Logger.warn('closing page for visit: '+ (visited + 1));
 
             visitedPages[url].visits[visited].ended = new Date();
 
@@ -67,7 +86,7 @@ var loadPages = function (url, cb) {
     Async.whilst(function () {
         return visited < repeat;
     }, visitUrl, function (error) {
-        if(error) console.log(error.red);
+        if(error) console.log(error);
         visitedPages[url].ended = new Date();
         cb.apply();
     });
@@ -84,27 +103,27 @@ var measureLoadTime = function (obj) {
 //gets called when all the urls are visited and loadtimes are measured
 var allUrlsVisited = function (error) {
     if(error)
-        console.log("ERROR: ", err);
+        Logger.error("ERROR: ", err);
 
 
     _.forEach(visitedPages, function (p, url) {
         console.log('URL: '+ url);
 
         if(p.error){
-            console.log("couldn't be opened".red);
+            Logger.error("couldn't be opened");
             return;
         }
 
         _.forEach(p.visits, function (timer, index) {
             var resMsg = ' total resources loaded: '+ timer.resources;
                 loadTimeMsg = 'Loadtime for visit - '+ index +' is : '+ measureLoadTime(timer) + resMsg; 
-            console.log(loadTimeMsg.cyan);
+            Logger.info(loadTimeMsg);
         });
 
         var avgLoadTime = (measureLoadTime(p) / p.visits.length).toFixed(3),
             loadTimeMsg = 'Average Loadtime: '+ avgLoadTime +'sec.';
 
-        console.log(loadTimeMsg.green); 
+        Logger.ok(loadTimeMsg); 
     });
 
     phantom.exit();
